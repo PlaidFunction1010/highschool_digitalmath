@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高中數學數位教案：期望值的動態收斂（擲雙骰）</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+        }
+        /* 3D 骰子基礎樣式 */
+        .dice-container {
+            perspective: 600px;
+        }
+        .cube {
+            width: 60px;
+            height: 60px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease-out;
+        }
+        .face {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: white;
+            border: 2px solid #e8e8ed;
+            border-radius: 14px;
+            display: grid;
+            grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+            padding: 6px;
+            box-sizing: border-box;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.05);
+        }
+        /* 骰子面 3D 空間定位 */
+        .face-1 { transform: rotateY(0deg) translateZ(30px); }
+        .face-6 { transform: rotateY(180deg) translateZ(30px); }
+        .face-2 { transform: rotateY(90deg) translateZ(30px); }
+        .face-5 { transform: rotateY(-90deg) translateZ(30px); }
+        .face-3 { transform: rotateX(90deg) translateZ(30px); }
+        .face-4 { transform: rotateX(-90deg) translateZ(30px); }
+
+        /* 骰子點數排版 */
+        .dot { background-color: #1d1d1f; border-radius: 50%; width: 8px; height: 8px; justify-self: center; align-self: center; }
+        .dot.red { background-color: #ff3b30; width: 12px; height: 12px; }
+        .row-1 { grid-row: 1; } .row-2 { grid-row: 2; } .row-3 { grid-row: 3; }
+        .col-1 { grid-column: 1; } .col-2 { grid-column: 2; } .col-3 { grid-column: 3; }
+
+        /* 搖晃動畫 */
+        @keyframes shake {
+            0% { transform: max(0deg) translate(0, 0) rotateX(0deg) rotateY(0deg); }
+            20% { transform: translate(-10px, 8px) rotateX(120deg) rotateY(70deg); }
+            40% { transform: translate(12px, -12px) rotateX(240deg) rotateY(190deg); }
+            60% { transform: translate(-8px, -6px) rotateX(390deg) rotateY(290deg); }
+            80% { transform: translate(6px, 10px) rotateX(500deg) rotateY(430deg); }
+            100% { transform: translate(0, 0); }
+        }
+        .rolling {
+            animation: shake 0.6s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased">
+
+    <!-- 頂部極簡導覽 -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-[#e8e8ed] sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+            <span class="text-sm font-semibold tracking-tight">數位教案：高中數學（機率篇-期望值）</span>
+            <span class="text-xs text-[#86868b] bg-[#f5f5f7] px-3 py-1 rounded-full font-medium">108 課綱精神：素養與動態探究</span>
+        </div>
+    </nav>
+
+    <!-- 主區塊 -->
+    <main class="max-w-6xl w-full mx-auto px-6 py-8 flex-grow flex flex-col gap-6">
+        
+        <!-- 核心概念與題目區 -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed]">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <span class="text-xs font-bold text-[#0071e3] tracking-wider uppercase bg-[#e6f2ff] px-2.5 py-1 rounded-md">單元主題：期望值 (Expected Value)</span>
+                    <h1 class="text-xl font-medium tracking-tight mt-2 text-neutral-800">
+                        【核心概念】期望值可視為「長期多次試驗結果的平均值」。隨試驗次數增多，此隨機的平均值會無可置疑地收斂至理論期望值。
+                    </h1>
+                </div>
+            </div>
+            
+            <div class="mt-4 p-4 bg-[#f5f5f7] rounded-xl border border-[#e8e8ed]">
+                <span class="text-xs font-semibold text-[#86868b]">【今日探索題目】</span>
+                <p class="text-sm text-[#1d1d1f] font-medium mt-1 leading-relaxed">
+                    同時投擲兩顆公正的骰子，觀察其「點數和（$X$）」。兩顆骰子點數和的理論期望值為 <span class="text-[#0071e3] font-bold text-base">7</span>。接下來，我們將藉由電腦實驗，親眼見證大數法則的收斂過程。
+                </p>
+            </div>
+        </div>
+
+        <!-- 互動實驗主格架 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            
+            <!-- 左側控制與骰子動態 -->
+            <div class="flex flex-col gap-6 lg:col-span-1">
+                <!-- 控制面板 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] space-y-4">
+                    <h2 class="text-sm font-semibold text-[#86868b] tracking-wider uppercase">模擬控制台</h2>
+                    
+                    <!-- 實驗次數下拉選單 -->
+                    <div>
+                        <label for="exp-times" class="block text-xs font-medium text-[#86868b] mb-1.5">選擇本次實驗次數 (n)：</label>
+                        <select id="exp-times" class="w-full bg-white border border-[#d2d2d7] rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:border-[#0071e3] cursor-pointer">
+                            <!-- 透過 JS 載入 1~100 選項 -->
+                        </select>
+                    </div>
+
+                    <!-- 開始實驗按鈕 -->
+                    <button id="btn-start" onclick="startDiceExperiment()" class="w-full bg-[#1d1d1f] hover:bg-[#333336] text-white font-medium py-3 rounded-xl text-sm transition-colors cursor-pointer active:scale-98 shadow-sm">
+                        開始實驗 (丟擲骰子)
+                    </button>
+                    
+                    <button onclick="resetAll()" class="w-full text-xs text-[#ff3b30] hover:underline block text-center pt-1 cursor-pointer">
+                        清除所有累積數據
+                    </button>
+                </div>
+
+                <!-- 骰子 3D 實體顯示區 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] flex flex-col items-center justify-center gap-6 min-h-[160px]">
+                    <div class="flex gap-10">
+                        <!-- 骰子 A -->
+                        <div class="dice-container">
+                            <div id="dice-a" class="cube">
+                                <div class="face face-1"><div class="dot red row-2 col-2"></div></div>
+                                <div class="face face-2"><div class="dot row-1 col-1"></div><div class="dot row-3 col-3"></div></div>
+                                <div class="face face-3"><div class="dot row-1 col-1"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-3"></div></div>
+                                <div class="face face-4"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div>
+                                <div class="face face-5"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div>
+                                <div class="face face-6"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-1"></div><div class="dot row-2 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div>
+                            </div>
+                        </div>
+                        <!-- 骰子 B -->
+                        <div class="dice-container">
+                            <div id="dice-b" class="cube">
+                                <div class="face face-1"><div class="dot red row-2 col-2"></div></div>
+                                <div class="face face-2"><div class="dot row-1 col-1"></div><div class="dot row-3 col-3"></div></div>
+                                <div class="face face-3"><div class="dot row-1 col-1"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-3"></div></div>
+                                <div class="face face-4"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div>
+                                <div class="face face-5"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div>
+                                <div class="face face-6"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-1"></div><div class="dot row-2 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-xs text-[#86868b]">最後一投結果</div>
+                        <div class="text-2xl font-semibold text-neutral-800 mt-0.5" id="dice-result-text">-</div>
+                    </div>
+                </div>
+
+                <!-- 當前面板數據 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] space-y-4">
+                    <div>
+                        <div class="text-xs text-[#86868b] mb-0.5">歷史總試驗次數 ($\Sigma n$)</div>
+                        <div class="text-3xl font-light tracking-tight" id="lbl-total-n">0</div>
+                    </div>
+                    <div class="pt-3 border-t border-[#f5f5f7]">
+                        <div class="text-xs text-[#86868b] mb-0.5">本次試驗平均值</div>
+                        <div class="text-xl font-medium text-neutral-700" id="lbl-current-avg">0.00</div>
+                    </div>
+                    <div class="pt-3 border-t border-[#e8e8ed]">
+                        <div class="text-xs text-[#86868b] mb-0.5">歷史累積總平均值</div>
+                        <div class="text-2xl font-semibold text-[#0071e3]" id="lbl-history-avg">0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側對照圖表與新課綱公式 -->
+            <div class="flex flex-col gap-6 lg:col-span-2">
+                <!-- 收斂折線圖 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] flex flex-col min-h-[350px]">
+                    <div class="mb-3">
+                        <h3 class="text-base font-medium tracking-tight">大數法則累積收斂軌跡</h3>
+                        <p class="text-xs text-[#86868b] mt-0.5">隨著總次數疊加，藍色的實際總平均線，會逐漸平滑並死死貼合灰色的理論期望值虛線（7）。</p>
+                    </div>
+                    <div class="relative flex-grow h-64 w-full">
+                        <canvas id="convergeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 高中課綱理論對照區 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed]">
+                    <h3 class="text-sm font-semibold text-[#86868b] tracking-wider uppercase mb-3">現行高中課綱：理論期望值計算對照表</h3>
+                    <p class="text-xs text-[#86868b] mb-3">公式：$E(X) = \sum_{i=2}^{12} x_i \cdot P(X=x_i) = 2 \times \frac{1}{36} + 3 \times \frac{2}{36} + \dots + 12 \times \frac{1}{36} = 7$</p>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-[#e8e8ed] text-[#86868b]">
+                                    <th class="py-2 font-medium">點數和 ($x_i$)</th>
+                                    <th class="py-2 font-medium">2</th>
+                                    <th class="py-2 font-medium">3</th>
+                                    <th class="py-2 font-medium">4</th>
+                                    <th class="py-2 font-medium">5</th>
+                                    <th class="py-2 font-medium">6</th>
+                                    <th class="py-2 font-medium text-[#0071e3]">7</th>
+                                    <th class="py-2 font-medium">8</th>
+                                    <th class="py-2 font-medium">9</th>
+                                    <th class="py-2 font-medium">10</th>
+                                    <th class="py-2 font-medium">11</th>
+                                    <th class="py-2 font-medium">12</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-[#f5f5f7] text-[#1d1d1f]">
+                                    <td class="py-2 font-medium text-[#86868b]">理論機率</td>
+                                    <td class="py-2">1/36</td>
+                                    <td class="py-2">2/36</td>
+                                    <td class="py-2">3/36</td>
+                                    <td class="py-2">4/36</td>
+                                    <td class="py-2">5/36</td>
+                                    <td class="py-2 text-[#0071e3] font-semibold">6/36</td>
+                                    <td class="py-2">5/36</td>
+                                    <td class="py-2">4/36</td>
+                                    <td class="py-2">3/36</td>
+                                    <td class="py-2">2/36</td>
+                                    <td class="py-2">1/36</td>
+                                </tr>
+                                <tr class="text-[#86868b]">
+                                    <td class="py-2 font-medium">實驗次數</td>
+                                    <td class="py-2" id="td-f-2">0</td>
+                                    <td class="py-2" id="td-f-3">0</td>
+                                    <td class="py-2" id="td-f-4">0</td>
+                                    <td class="py-2" id="td-f-5">0</td>
+                                    <td class="py-2" id="td-f-6">0</td>
+                                    <td class="py-2 text-[#0071e3]" id="td-f-7">0</td>
+                                    <td class="py-2" id="td-f-8">0</td>
+                                    <td class="py-2" id="td-f-9">0</td>
+                                    <td class="py-2" id="td-f-10">0</td>
+                                    <td class="py-2" id="td-f-11">0</td>
+                                    <td class="py-2" id="td-f-12">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="bg-white border-t border-[#e8e8ed] py-4 text-center text-xs text-[#86868b]">
+        教學引導小抄：可請學生先選 5 次，觀察右圖藍線如何劇烈震盪跳脫 7；再選 100 次連續擲幾遍，引導學生發現不管中間怎麼震盪，尾巴終將被「馴服」走向 7。
+    </footer>
+
+    <!-- 核心邏輯腳本 -->
+    <script>
+        // 初始化下拉選單 1 ~ 100
+        const selectElement = document.getElementById('exp-times');
+        for (let i = 1; i <= 100; i++) {
+            let opt = document.createElement('option');
+            opt.value = i;
+            opt.innerHTML = `${i} 次`;
+            if (i === 50) opt.selected = true; // 預設 50 次
+            selectElement.appendChild(opt);
+        }
+
+        // 理論與實驗數據變數
+        const theoreticalEV = 7.0;
+        let totalN = 0;
+        let totalSum = 0;
+        
+        // 分組次數計數器 (點數和 2 ~ 12)
+        let frequencies = { 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0, 12:0 };
+
+        // 骰子各面的 3D 旋轉座標對照
+        const rotateCoords = {
+            1: 'rotateX(0deg) rotateY(0deg)',
+            6: 'rotateY(180deg) rotateX(0deg)',
+            2: 'rotateY(-90deg) rotateX(0deg)',
+            5: 'rotateY(90deg) rotateX(0deg)',
+            3: 'rotateX(-90deg) rotateY(0deg)',
+            4: 'rotateX(90deg) rotateY(0deg)'
+        };
+
+        // 初始化圖表
+        const ctx = document.getElementById('convergeChart').getContext('2d');
+        const convergeChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [0],
+                datasets: [
+                    {
+                        label: '累積實際歷史總平均',
+                        data: [null],
+                        borderColor: '#0071e3',
+                        borderWidth: 2,
+                        pointRadius: function(context) { return context.chart.data.labels.length > 80 ? 0 : 2; },
+                        tension: 0.1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: '理論期望值 (7.0)',
+                        data: [7],
+                        borderColor: '#aeaea2',
+                        borderWidth: 1.5,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: '總累計試驗次數', font: { size: 11 } } },
+                    y: { min: 1, max: 13, title: { display: true, text: '點數和平均值', font: { size: 11 } } }
+                },
+                animation: { duration: 150 }
+            }
+        });
+
+        // 執行骰子模擬實驗
+        function startDiceExperiment() {
+            const btn = document.getElementById('btn-start');
+            const selectTimes = parseInt(selectElement.value);
+            
+            // 停用按鈕防連點
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // 觸發 3D 骰子跳動動畫
+            const diceA = document.getElementById('dice-a');
+            const diceB = document.getElementById('dice-b');
+            diceA.classList.add('rolling');
+            diceB.classList.add('rolling');
+
+            let currentBatchSum = 0;
+            let finalA = 1, finalB = 1;
+
+            // 預先計算本次模擬的所有點數結果
+            let batchResults = [];
+            for (let i = 0; i < selectTimes; i++) {
+                let die1 = Math.floor(Math.random() * 6) + 1;
+                let die2 = Math.floor(Math.random() * 6) + 1;
+                let sum = die1 + die2;
+                batchResults.push({ d1: die1, d2: die2, sum: sum });
+                currentBatchSum += sum;
+            }
+
+            // 最後一次投擲結果當作實體骰子顯示的值
+            if(batchResults.length > 0) {
+                finalA = batchResults[batchResults.length - 1].d1;
+                finalB = batchResults[batchResults.length - 1].d2;
+            }
+
+            // 等待搖骰子動畫完畢後 (600ms) 再開獎與劃線
+            setTimeout(() => {
+                // 定位 3D 骰子最終顯示面
+                diceA.style.transform = rotateCoords[finalA];
+                diceB.style.transform = rotateCoords[finalB];
+                
+                diceA.classList.remove('rolling');
+                diceB.classList.remove('rolling');
+
+                // 顯示最後一投文字
+                document.getElementById('dice-result-text').innerText = `${finalA} + ${finalB} = ${finalA + finalB} 點`;
+
+                // 逐步把本次結果推入歷史大數據
+                batchResults.forEach(res => {
+                    totalN++;
+                    totalSum += res.sum;
+                    frequencies[res.sum]++;
+
+                    // 每一步都在圖表產生新座標點
+                    convergeChart.data.labels.push(totalN);
+                    convergeChart.data.datasets[0].data.push(totalSum / totalN);
+                    convergeChart.data.datasets[1].data.push(theoreticalEV);
+                });
+
+                // 更新看板與表格數據
+                const currentBatchAvg = currentBatchSum / selectTimes;
+                const historyAvg = totalSum / totalN;
+
+                document.getElementById('lbl-total-n').innerText = totalN.toLocaleString();
+                document.getElementById('lbl-current-avg').innerText = currentBatchAvg.toFixed(2);
+                document.getElementById('lbl-history-avg').innerText = historyAvg.toFixed(2);
+
+                // 刷新表格中的試驗次數計數
+                for (let k = 2; k <= 12; k++) {
+                    document.getElementById(`td-f-${k}`).innerText = frequencies[k];
+                }
+
+                // 更新圖表
+                convergeChart.update();
+
+                // 恢復按鈕運作
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            }, 600);
+        }
+
+        // 重設整個模擬系統
+        function resetAll() {
+            totalN = 0;
+            totalSum = 0;
+            for (let k = 2; k <= 12; k++) {
+                frequencies[k] = 0;
+                document.getElementById(`td-f-${k}`).innerText = '0';
+            }
+            document.getElementById('lbl-total-n').innerText = '0';
+            document.getElementById('lbl-current-avg').innerText = '0.00';
+            document.getElementById('lbl-history-avg').innerText = '0.00';
+            document.getElementById('dice-result-text').innerText = '-';
+
+            convergeChart.data.labels = [0];
+            convergeChart.data.datasets[0].data = [null];
+            convergeChart.data.datasets[1].data = [7];
+            convergeChart.update();
+        }
+    </script>
+</body>
+</html>
