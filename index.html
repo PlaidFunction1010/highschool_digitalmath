@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>林老師的數學數位教室</title>
+    <title>林老師的數學數位教案實驗室</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Chart.js CDN -->
@@ -14,19 +14,27 @@
             background-color: #f5f5f7;
             color: #1d1d1f;
         }
+        /* 視窗與側邊欄基礎切換邏輯 */
         .view-section { display: none; }
         .view-section.active { display: block; }
         
+        /* 巢狀目錄高亮 */
+        .sidebar-item.active {
+            background-color: #e6f2ff;
+            color: #0071e3;
+            font-weight: 600;
+        }
+
         /* 3D 骰子樣式 */
         .dice-container { perspective: 600px; }
         .cube { width: 60px; height: 60px; position: relative; transform-style: preserve-3d; transition: transform 0.5s ease-out; }
-        .face { position: absolute; width: 60px; height: 60px; background: white; border: 2px solid #e8e8ed; border-radius: 14px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 6px; box-sizing: border-box; box-shadow: inset 0 0 10px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.05); }
+        .face { position: absolute; width: 60px; height: 60px; background: white; border: 2px solid #e8e8ed; border-radius: 14px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 6px; box-sizing: border-box; box-shadow: inset 0 0 10px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.04); }
         .face-1 { transform: rotateY(0deg) translateZ(30px); }
-        .face-6 { transform: rotateY(180deg) translateZ(30px); }
-        .face-2 { transform: rotateY(-90deg) translateZ(30px); }
-        .face-5 { transform: rotateY(90deg) translateZ(30px); }
-        .face-3 { transform: rotateX(-90deg) translateZ(30px); }
-        .face-4 { transform: rotateX(90deg) translateZ(30px); }
+        .face-6 { transform: rotateY(180deg); }
+        .face-2 { transform: rotateY(-90deg); }
+        .face-5 { transform: rotateY(90deg); }
+        .face-3 { transform: rotateX(-90deg); }
+        .face-4 { transform: rotateX(90deg); }
         .dot { background-color: #1d1d1f; border-radius: 50%; width: 8px; height: 8px; justify-self: center; align-self: center; }
         .dot.red { background-color: #ff3b30; width: 12px; height: 12px; }
         .row-1 { grid-row: 1; } .row-2 { grid-row: 2; } .row-3 { grid-row: 3; }
@@ -41,251 +49,170 @@
         }
         .rolling { animation: shake 0.6s ease-in-out; }
 
-        /* 主題三：翻牌立體動畫樣式 */
-        .card-scene { width: 70px; height: 100px; perspective: 600px; }
+        /* 翻牌立體動畫樣式 */
+        .card-scene { width: 66px; height: 95px; perspective: 600px; }
         .card-entity { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .card-entity.is-flipped { transform: rotateY(180deg); }
-        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 10px; display: flex; flex-col; items-center; justify-content: center; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.04); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 10px; display: flex; flex-direction: column; items-center; justify-content: center; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.04); }
         .card-front { background: #1d1d1f; border: 2px solid #333; color: #86868b; }
-        .card-back { background: white; border: 2px solid #0071e3; color: #0071e3; transform: rotateY(180deg); font-size: 1.25rem; }
-        .card-disabled { opacity: 0.4; transform: translateY(10px); }
+        .card-back { background: white; border: 2px solid #0071e3; color: #0071e3; transform: rotateY(180deg); font-size: 1.1rem; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between antialiased">
+<body class="h-screen flex flex-col justify-between overflow-hidden antialiased">
 
     <!-- 頂部通用導覽列 -->
-    <nav class="bg-white/80 backdrop-blur-md border-b border-[#e8e8ed] sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-            <div class="flex items-center gap-3 cursor-pointer" onclick="switchView('home')">
-                <span class="text-sm font-semibold tracking-tight text-[#0071e3]"> MathLab</span>
-                <span class="text-xs text-[#86868b] border-l border-[#d2d2d7] pl-3 hidden sm:inline">高中數學互動實驗室</span>
-            </div>
-            <button id="btn-back-home" onclick="switchView('home')" class="text-xs text-[#0071e3] hover:underline hidden font-medium">
-                ← 返回首頁大廳
-            </button>
+    <nav class="bg-white/80 backdrop-blur-md border-b border-[#e8e8ed] h-14 flex items-center justify-between px-4 lg:px-6 shrink-0 z-50">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleMobileSidebar()" class="md:hidden p-1.5 rounded-lg hover:bg-[#f5f5f7] active:scale-95 transition-all text-[#0071e3] text-sm font-semibold cursor-pointer"> 選單</button>
+            <span class="text-sm font-semibold tracking-tight text-[#0071e3]"> MathLab</span>
+            <span class="text-xs text-[#86868b] border-l border-[#d2d2d7] pl-3 hidden sm:inline">高中數學一體化平台</span>
         </div>
+        <div class="text-xs text-[#86868b] font-medium"><span class="hidden sm:inline">架構：大一統 RWD 虛擬路由 SPA</span></div>
     </nav>
 
-    <!-- ========================================== -->
-    <!-- 區塊一：首頁大廳 (Home View) -->
-    <!-- ========================================== -->
-    <div id="view-home" class="view-section active max-w-5xl w-full mx-auto px-6 py-12 flex-grow">
-        <header class="mb-12">
-            <h1 class="text-3xl font-semibold tracking-tight text-neutral-800">數位教案</h1>
-            <p class="text-sm text-[#86868b] mt-2 max-w-xl leading-relaxed">
-                透過直覺的動態模擬與數據視覺化，將抽象的數學公式具象化。點選下方的主題模組，開始帶領學生進行探索。
-            </p>
-        </header>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- 課程卡片 1 -->
-            <div onclick="switchView('topic1')" class="bg-white rounded-2xl p-6 border border-[#e8e8ed] shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[180px]">
-                <div>
-                    <span class="text-xs font-semibold text-[#0071e3] bg-[#e6f2ff] px-2.5 py-1 rounded-md">主題一</span>
-                    <h2 class="text-lg font-medium text-neutral-800 mt-3 group-hover:text-[#0071e3] transition-colors">不公正賽局模擬</h2>
-                    <p class="text-xs text-[#86868b] mt-1.5 leading-relaxed">透過經典的硬幣輸贏賽局，讓學生藉由高達 1000 次的自動模擬，觀察隨機波動如何收斂至「長期平均值」。</p>
+    <!-- 主框架：左側欄 + 右舞台 -->
+    <div class="flex flex-grow overflow-hidden w-full max-w-[1440px] mx-auto relative">
+        
+        <!-- 左側欄：兩層巢狀目錄導覽 (Sidebar) -->
+        <aside id="sidebar-container" class="absolute inset-y-0 left-0 w-64 bg-white border-r border-[#e8e8ed] flex flex-col justify-between p-4 z-40 transform -translate-x-full transition-transform duration-300 md:static md:translate-x-0 shrink-0 overflow-y-auto">
+            <div class="space-y-4">
+                
+                <!-- 【第一層：單元 01】 -->
+                <div class="space-y-1">
+                    <div class="px-2.5 py-1.5 text-[11px] font-bold text-[#86868b] tracking-wider uppercase bg-[#f5f5f7] rounded-lg">第一單元：機率與統計</div>
+                    <!-- 【第二層：主題清單】 -->
+                    <div class="pl-2 space-y-0.5">
+                        <button onclick="switchView('topic1')" id="side-topic1" class="sidebar-item w-full text-left text-xs px-3 py-2 rounded-xl transition-all cursor-pointer hover:bg-[#f5f5f7] flex items-center gap-2">🪙 不公正賽局模擬</button>
+                        <button onclick="switchView('topic2')" id="side-topic2" class="sidebar-item w-full text-left text-xs px-3 py-2 rounded-xl transition-all cursor-pointer hover:bg-[#f5f5f7] flex items-center gap-2">🎲 公正雙骰點數和</button>
+                        <button onclick="switchView('topic3')" id="side-topic3" class="sidebar-item w-full text-left text-xs px-3 py-2 rounded-xl transition-all cursor-pointer hover:bg-[#f5f5f7] flex items-center gap-2">🃏 期望值與公平賽局</button>
+                    </div>
                 </div>
-                <span class="text-xs font-medium text-[#0071e3] mt-4 block">進入微型教案 →</span>
+
+                <!-- 【第一層：單元 02】 -->
+                <div class="space-y-1">
+                    <div class="px-2.5 py-1.5 text-[11px] font-bold text-[#86868b] tracking-wider uppercase bg-[#f5f5f7] rounded-lg">第二單元：矩陣與線性變換</div>
+                    <div class="pl-2 space-y-0.5"><div class="text-[11px] text-[#aeaea2] italic px-3 py-2">(沙盒就緒，隨時可擴充)</div></div>
+                </div>
+
+            </div>
+            <div class="pt-4 border-t border-[#f5f5f7] text-[10px] text-[#86868b] px-2.5">支援 RWD 響應式行動裝置</div>
+        </aside>
+
+        <!-- 手機版黑紗遮罩 -->
+        <div id="sidebar-overlay" onclick="toggleMobileSidebar()" class="hidden fixed inset-0 bg-black/20 z-30 md:hidden"></div>
+
+        <!-- 右側欄：動態內容舞台 (Stage) -->
+        <main class="flex-grow bg-[#f5f5f7] p-4 lg:p-6 overflow-y-auto h-full w-full">
+            
+            <!-- 主題一視窗：不公正賽局模擬 -->
+            <div id="view-topic1" class="view-section">
+                <div class="bg-white rounded-2xl p-5 shadow-xs border border-[#e8e8ed] mb-5">
+                    <span class="text-xs font-bold text-[#0071e3] bg-[#e6f2ff] px-2.5 py-1 rounded-md">單元一 ➔ 主題 01</span>
+                    <h1 class="text-lg md:text-xl font-medium tracking-tight mt-2 text-neutral-800">大數法則與期望值動態模擬器</h1>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                    <div class="xl:col-span-1 flex flex-col gap-5">
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed]">
+                            <div class="space-y-1.5 text-xs">
+                                <div class="flex justify-between p-2 bg-[#f5f5f7] rounded-xl"><span class="text-[#0071e3] font-medium">正面</span><span>40% / +100 元</span></div>
+                                <div class="flex justify-between p-2 bg-[#f5f5f7] rounded-xl"><span class="text-[#ff3b30] font-medium">反面</span><span>60% / -50 元</span></div>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-[#e8e8ed] flex justify-between items-center text-xs text-[#86868b]"><span>理論期望值：</span><span class="font-semibold text-sm text-[#1d1d1f]">10.0 元</span></div>
+                        </div>
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] flex flex-col gap-2">
+                            <div class="grid grid-cols-3 gap-1.5">
+                                <button onclick="runT1(1)" class="bg-[#f5f5f7] py-2 rounded-xl text-xs font-medium cursor-pointer">+1次</button>
+                                <button onclick="runT1(10)" class="bg-[#f5f5f7] py-2 rounded-xl text-xs font-medium cursor-pointer">+10次</button>
+                                <button onclick="runT1(100)" class="bg-[#f5f5f7] py-2 rounded-xl text-xs font-medium cursor-pointer">+100次</button>
+                            </div>
+                            <button onclick="runT1(1000)" class="bg-[#0071e3] text-white py-2.5 rounded-xl text-xs font-medium cursor-pointer">高速自動模擬 +1000次</button>
+                            <button onclick="resetT1()" class="text-xs text-[#ff3b30] mt-1 text-center cursor-pointer">重設實驗數據</button>
+                        </div>
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] text-xs space-y-1.5">
+                            <div class="flex justify-between"><span>累積試驗次數:</span> <span id="t1-count" class="font-bold">0</span></div>
+                            <div class="flex justify-between"><span>當前累積平均:</span> <span id="t1-avg" class="font-bold text-[#0071e3]">0.0 元</span></div>
+                        </div>
+                    </div>
+                    <div class="xl:col-span-2"><div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] h-64 md:h-80"><canvas id="t1Chart"></canvas></div></div>
+                </div>
             </div>
 
-            <!-- 課程卡片 2 -->
-            <div onclick="switchView('topic2')" class="bg-white rounded-2xl p-6 border border-[#e8e8ed] shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[180px]">
-                <div>
-                    <span class="text-xs font-semibold text-[#0071e3] bg-[#e6f2ff] px-2.5 py-1 rounded-md">主題二</span>
-                    <h2 class="text-lg font-medium text-neutral-800 mt-3 group-hover:text-[#0071e3] transition-colors">公正雙骰點數和</h2>
-                    <p class="text-xs text-[#86868b] mt-1.5 leading-relaxed">符合 108 課綱精神，模擬擲兩顆骰子並記錄點數和。結合 3D 骰子動畫與高中課綱乘積和表格對照。</p>
+            <!-- 主題二視窗：公正雙骰點數和 -->
+            <div id="view-topic2" class="view-section">
+                <div class="bg-white rounded-2xl p-5 shadow-xs border border-[#e8e8ed] mb-5">
+                    <span class="text-xs font-bold text-[#0071e3] bg-[#e6f2ff] px-2.5 py-1 rounded-md">單元一 ➔ 主題 02</span>
+                    <h1 class="text-lg md:text-xl font-medium tracking-tight mt-2 text-neutral-800">獨立重複試驗：擲兩顆公正骰子點數和</h1>
                 </div>
-                <span class="text-xs font-medium text-[#0071e3] mt-4 block">進入微型教案 →</span>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                    <div class="flex flex-col gap-5 xl:col-span-1">
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] space-y-2.5">
+                            <label class="block text-xs font-medium text-[#86868b]">選擇本次實驗次數：</label>
+                            <select id="t2-exp-times" class="w-full border border-[#d2d2d7] rounded-xl px-2.5 py-1.5 text-xs cursor-pointer"><option value="1">1 次</option><option value="10">10 次</option><option value="50" selected>50 次</option><option value="100">100 次</option></select>
+                            <button id="btn-t2-start" onclick="startT2()" class="w-full bg-[#1d1d1f] text-white py-2 rounded-xl text-xs cursor-pointer">開始丟擲骰子</button>
+                            <button onclick="resetT2()" class="text-xs text-[#ff3b30] block text-center w-full cursor-pointer">清除累積數據</button>
+                        </div>
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] flex flex-col items-center gap-2">
+                            <div class="flex gap-4 scale-65 md:scale-75">
+                                <div class="dice-container"><div id="t2-dice-a" class="cube"><div class="face face-1"><div class="dot red row-2 col-2"></div></div><div class="face face-2"><div class="dot row-1 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-3"><div class="dot row-1 col-1"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-3"></div></div><div class="face face-4"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-5"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-6"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-1"></div><div class="dot row-2 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div></div></div>
+                                <div class="dice-container"><div id="t2-dice-b" class="cube"><div class="face face-1"><div class="dot red row-2 col-2"></div></div><div class="face face-2"><div class="dot row-1 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-3"><div class="dot row-1 col-1"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-3"></div></div><div class="face face-4"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-5"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-6"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-1"></div><div class="dot row-2 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div></div></div>
+                            </div>
+                            <div class="text-[11px] text-[#86868b]">最後結果：<span id="t2-dice-text" class="font-bold text-[#1d1d1f]">-</span></div>
+                        </div>
+                    </div>
+                    <div class="xl:col-span-2 flex flex-col gap-4">
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] h-56 md:h-64"><canvas id="t2Chart"></canvas></div>
+                        <div class="bg-white rounded-2xl p-3 shadow-xs border border-[#e8e8ed] text-[9px] overflow-x-auto">
+                            <table class="w-full text-center">
+                                <tr class="text-[#86868b] border-b border-[#e8e8ed]"><th class="py-1">點數和</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th class="text-[#0071e3]">7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th></tr>
+                                <tr class="text-neutral-500"><td>實驗</td><td id="t2-f-2">0</td><td id="t2-f-3">0</td><td id="t2-f-4">0</td><td id="t2-f-5">0</td><td id="t2-f-6">0</td><td id="t2-f-7" class="text-[#0071e3]">0</td><td id="t2-f-8">0</td><td id="t2-f-9">0</td><td id="t2-f-10">0</td><td id="t2-f-11">0</td><td id="t2-f-12">0</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- 課程卡片 3（新增：園遊會公平賽局） -->
-            <div onclick="switchView('topic3')" class="bg-white rounded-2xl p-6 border border-[#e8e8ed] shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[180px]">
-                <div>
-                    <span class="text-xs font-semibold text-[#34c759] bg-[#eafaf0] px-2.5 py-1 rounded-md">主題三</span>
-                    <h2 class="text-lg font-medium text-neutral-800 mt-3 group-hover:text-[#34c759] transition-colors">期望值與公平賽局</h2>
-                    <p class="text-xs text-[#86868b] mt-1.5 leading-relaxed">園遊會翻牌遊戲：透過挑戰者甲（付費）與志工乙（免費）的雙線收斂對照，深入解析何謂「公平賽局」。</p>
+            <!-- 主題三視窗：期望值與公平賽局 -->
+            <div id="view-topic3" class="view-section">
+                <div class="bg-white rounded-2xl p-5 shadow-xs border border-[#e8e8ed] mb-5">
+                    <span class="text-xs font-bold text-[#34c759] bg-[#eafaf0] px-2.5 py-1 rounded-md">單元一 ➔ 主題 03</span>
+                    <h1 class="text-lg md:text-xl font-medium tracking-tight mt-2 text-neutral-800">期望值與公平的賽局對照探究</h1>
+                    <div class="mt-3 p-3 bg-[#f5f5f7] rounded-xl border border-[#e8e8ed] text-xs text-neutral-600 leading-relaxed">
+                        <p class="font-semibold text-[#1d1d1f]">【課堂情境題目】</p>
+                        園遊會攤位需付 <span class="font-bold">1 元</span> 參加翻牌（0元、1元、2元各一張）。翻到多少拿多少。試對照甲（挑戰者，成本1元）與乙（免付費志工）兩者的淨獲利期望值與長期累積收斂軌跡。
+                    </div>
                 </div>
-                <span class="text-xs font-medium text-[#34c759] mt-4 block">進入微型教案 →</span>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                    <div class="flex flex-col gap-5 xl:col-span-1">
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] space-y-2.5">
+                            <label class="block text-xs font-medium text-[#86868b]">選擇本次實驗次數：</label>
+                            <select id="t3-exp-times" class="w-full border border-[#d2d2d7] rounded-xl px-2.5 py-1.5 text-xs cursor-pointer"></select>
+                            <button id="btn-t3-start" onclick="startT3()" class="w-full bg-[#34c759] text-white py-2 rounded-xl text-xs font-medium cursor-pointer">開始翻牌實驗</button>
+                            <button onclick="resetT3()" class="w-full text-xs text-[#ff3b30] text-center cursor-pointer">清空本組數據</button>
+                        </div>
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] flex flex-col items-center justify-center gap-2">
+                            <div class="flex gap-2 scale-85 md:scale-90">
+                                <div class="card-scene"><div id="card-0" class="card-entity"><div class="card-face card-front">?</div><div class="card-face card-back">0 元</div></div></div>
+                                <div class="card-scene"><div id="card-1" class="card-entity"><div class="card-face card-front">?</div><div class="card-face card-back">1 元</div></div></div>
+                                <div class="card-scene"><div id="card-2" class="card-entity"><div class="card-face card-front">?</div><div class="card-face card-back">2 元</div></div></div>
+                            </div>
+                            <div class="text-[11px] text-[#86868b] mt-0.5">結果：<span id="t3-card-text" class="font-bold text-neutral-800">-</span></div>
+                        </div>
+                    </div>
+                    <div class="xl:col-span-2 flex flex-col gap-4">
+                        <div class="bg-white rounded-2xl p-4 shadow-xs border border-[#e8e8ed] h-56 md:h-64"><canvas id="t3Chart"></canvas></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] leading-relaxed">
+                            <div class="p-3 bg-[#fffbe6] rounded-xl border border-[#ffe58f]"><strong>甲（挑戰者）：</strong> 獎金期望值 1 元 $-$ 成本 1 元 = <span class="text-red-500 font-bold">0 元</span>。對甲而言是<span class="font-bold">公平賽局</span>，長期玩下來淨利收斂至 0。</div>
+                            <div class="p-3 bg-[#eafaf0] rounded-xl border border-[#b7eb8f]"><strong>乙（志工）：</strong> 免成本，淨利期望值 = <span class="text-green-600 font-bold">1 元</span>。對乙而言是<span class="font-bold">不公平賽局（佔便宜）</span>，長期收斂至 1。</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+
+        </main>
     </div>
-
-
-    <!-- ========================================== -->
-    <!-- 區塊二：主題一（不公正賽局模擬） -->
-    <!-- ========================================== -->
-    <div id="view-topic1" class="view-section max-w-6xl w-full mx-auto px-6 py-8 flex-grow">
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] mb-6">
-            <span class="text-xs font-bold text-[#0071e3] bg-[#e6f2ff] px-2.5 py-1 rounded-md">主題模組一</span>
-            <h1 class="text-xl font-medium tracking-tight mt-2">大數法則與期望值動態模擬器（不公正賽局）</h1>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="md:col-span-1 flex flex-col gap-6">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed]">
-                    <div class="space-y-2.5 text-sm">
-                        <div class="flex justify-between items-center bg-[#f5f5f7] p-2.5 rounded-xl"><span class="font-medium text-[#0071e3]">正面 (↑)</span><span>機率 40% / 獲得 100 元</span></div>
-                        <div class="flex justify-between items-center bg-[#f5f5f7] p-2.5 rounded-xl"><span class="font-medium text-[#ff3b30]">反面 (↓)</span><span>機率 60% / 損失 50 元</span></div>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-[#e8e8ed] flex justify-between items-center text-xs text-[#86868b]"><span>理論期望值 (E)：</span><span class="font-semibold text-base text-[#1d1d1f]">10.0 元</span></div>
-                </div>
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] flex flex-col gap-3">
-                    <div class="grid grid-cols-3 gap-2">
-                        <button onclick="runT1(1)" class="bg-[#f5f5f7] py-2.5 rounded-xl text-xs font-medium cursor-pointer">+1 次</button>
-                        <button onclick="runT1(10)" class="bg-[#f5f5f7] py-2.5 rounded-xl text-xs font-medium cursor-pointer">+10 次</button>
-                        <button onclick="runT1(100)" class="bg-[#f5f5f7] py-2.5 rounded-xl text-xs font-medium cursor-pointer">+100 次</button>
-                    </div>
-                    <button onclick="runT1(1000)" class="bg-[#0071e3] text-white py-3 rounded-xl text-xs font-medium cursor-pointer">高速模擬 +1000 次</button>
-                    <button onclick="resetT1()" class="text-xs text-[#ff3b30] mt-1 cursor-pointer">重設實驗數據</button>
-                </div>
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] space-y-3 text-sm">
-                    <div><span class="text-xs text-[#86868b]">累積總次數:</span> <span id="t1-count" class="font-bold">0</span></div>
-                    <div><span class="text-xs text-[#86868b]">累積總平均:</span> <span id="t1-avg" class="font-bold text-[#0071e3]">0.0 元</span></div>
-                </div>
-            </div>
-            <div class="md:col-span-2 flex flex-col gap-6"><div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] h-80"><canvas id="t1Chart"></canvas></div></div>
-        </div>
-    </div>
-
-
-    <!-- ========================================== -->
-    <!-- 區塊三：主題二（公正雙骰點數和） -->
-    <!-- ========================================== -->
-    <div id="view-topic2" class="view-section max-w-6xl w-full mx-auto px-6 py-8 flex-grow">
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] mb-6">
-            <span class="text-xs font-bold text-[#0071e3] bg-[#e6f2ff] px-2.5 py-1 rounded-md">主題模組二</span>
-            <h1 class="text-xl font-medium tracking-tight mt-2">獨立重複試驗：擲兩顆公正骰子點數和</h1>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="flex flex-col gap-6 lg:col-span-1">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] space-y-4">
-                    <div>
-                        <label class="block text-xs font-medium text-[#86868b] mb-1">選擇本次實驗次數：</label>
-                        <select id="t2-exp-times" class="w-full border border-[#d2d2d7] rounded-xl px-3 py-2 text-sm cursor-pointer"><option value="1">1 次</option><option value="10">10 次</option><option value="50" selected>50 次</option><option value="100">100 次</option></select>
-                    </div>
-                    <button id="btn-t2-start" onclick="startT2()" class="w-full bg-[#1d1d1f] text-white py-2.5 rounded-xl text-sm cursor-pointer">開始丟擲骰子</button>
-                    <button onclick="resetT2()" class="text-xs text-[#ff3b30] block text-center w-full cursor-pointer">清除數據</button>
-                </div>
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] flex flex-col items-center gap-4">
-                    <div class="flex gap-8 scale-90">
-                        <div class="dice-container"><div id="t2-dice-a" class="cube"><div class="face face-1"><div class="dot red row-2 col-2"></div></div><div class="face face-2"><div class="dot row-1 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-3"><div class="dot row-1 col-1"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-3"></div></div><div class="face face-4"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-5"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-6"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-1"></div><div class="dot row-2 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div></div></div>
-                        <div class="dice-container"><div id="t2-dice-b" class="cube"><div class="face face-1"><div class="dot red row-2 col-2"></div></div><div class="face face-2"><div class="dot row-1 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-3"><div class="dot row-1 col-1"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-3"></div></div><div class="face face-4"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-5"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-2"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div><div class="face face-6"><div class="dot row-1 col-1"></div><div class="dot row-1 col-3"></div><div class="dot row-2 col-1"></div><div class="dot row-2 col-3"></div><div class="dot row-3 col-1"></div><div class="dot row-3 col-3"></div></div></div></div>
-                    </div>
-                    <div class="text-xs text-[#86868b]">最後結果：<span id="t2-dice-text" class="font-bold text-[#1d1d1f]">-</span></div>
-                </div>
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-[#e8e8ed] text-xs">總次數: <span id="t2-total-n">0</span> | 平均: <span id="t2-history-avg" class="text-[#0071e3]">0.00</span></div>
-            </div>
-            <div class="lg:col-span-2 flex flex-col gap-6">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] h-64"><canvas id="t2Chart"></canvas></div>
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-[#e8e8ed] text-[10px] overflow-x-auto">
-                    <table class="w-full text-center">
-                        <tr class="text-[#86868b] border-b border-[#e8e8ed]"><th class="py-1">點數和</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th class="text-[#0071e3]">7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th></tr>
-                        <tr class="text-neutral-500"><td>實驗</td><td id="t2-f-2">0</td><td id="t2-f-3">0</td><td id="t2-f-4">0</td><td id="t2-f-5">0</td><td id="t2-f-6">0</td><td id="t2-f-7" class="text-[#0071e3]">0</td><td id="t2-f-8">0</td><td id="t2-f-9">0</td><td id="t2-f-10">0</td><td id="t2-f-11">0</td><td id="t2-f-12">0</td></tr>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- ========================================== -->
-    <!-- 區塊四：主題三（園遊會公平賽局模擬） -->
-    <!-- ========================================== -->
-    <div id="view-topic3" class="view-section max-w-6xl w-full mx-auto px-6 py-8 flex-grow">
-        <!-- 課綱與題目公告板 -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] mb-6">
-            <span class="text-xs font-bold text-[#34c759] bg-[#eafaf0] px-2.5 py-1 rounded-md">核心單元：期望值與公平賽局</span>
-            <div class="mt-4 p-4 bg-[#f5f5f7] rounded-xl border border-[#e8e8ed] space-y-2 text-xs md:text-sm text-neutral-700 leading-relaxed">
-                <p class="font-semibold text-[#1d1d1f]">【課堂情境題目】</p>
-                <p>開設一個園遊會攤位，需要付 <span class="font-bold">1 元</span> 才能參加翻牌拿獎金的遊戲，翻到多少錢就拿多少錢。牌一共有三張，分別為 <span class="font-bold">0元、1元、2元</span> 各一張，每一張被抽中的機會相同。試回答：</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 mt-2 text-xs text-[#515154]">
-                    <p><strong>(1) 甲（挑戰者）：</strong> 「獎金」期望值是多少？（付費 1 元）</p>
-                    <p><strong>(2) 乙（免付費志工）：</strong> 「獎金」期望值是多少？</p>
-                    <p><strong>(3) 對甲而言：</strong> 是公平賽局嗎？長期下來獲利接近多少？</p>
-                    <p><strong>(4) 對乙而言：</strong> 是公平賽局嗎？長期下來獲利接近多少？</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            <!-- 左側控制區與翻牌效果 -->
-            <div class="flex flex-col gap-6 lg:col-span-1">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] space-y-4">
-                    <h3 class="text-xs font-semibold text-[#86868b] tracking-wider uppercase">模擬實驗控制台</h3>
-                    <div>
-                        <label for="t3-exp-times" class="block text-xs font-medium text-[#86868b] mb-1">選擇本次實驗次數 (n)：</label>
-                        <select id="t3-exp-times" class="w-full bg-white border border-[#d2d2d7] rounded-xl px-3 py-2 text-sm cursor-pointer">
-                            <!-- JS將會動態生成 1~100 選項 -->
-                        </select>
-                    </div>
-                    <button id="btn-t3-start" onclick="startT3()" class="w-full bg-[#34c759] hover:bg-[#2db34f] text-white font-medium py-2.5 rounded-xl text-sm transition-colors cursor-pointer">
-                        開始翻牌實驗
-                    </button>
-                    <button onclick="resetT3()" class="w-full text-xs text-[#ff3b30] hover:underline text-center cursor-pointer">
-                        清空本單元數據
-                    </button>
-                </div>
-
-                <!-- 撲克牌實體視覺區 -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] flex flex-col items-center justify-center gap-4 min-h-[180px]">
-                    <div class="flex gap-4">
-                        <!-- 卡片 1 -->
-                        <div class="card-scene"><div id="card-0" class="card-entity"><div class="card-face card-front">?</div><div class="card-face card-back">0 元</div></div></div>
-                        <!-- 卡片 2 -->
-                        <div class="card-scene"><div id="card-1" class="card-entity"><div class="card-face card-front">?</div><div class="card-face card-back">1 元</div></div></div>
-                        <!-- 卡片 3 -->
-                        <div class="card-scene"><div id="card-2" class="card-entity"><div class="card-face card-front">?</div><div class="card-face card-back">2 元</div></div></div>
-                    </div>
-                    <div class="text-center mt-2">
-                        <div class="text-xs text-[#86868b]">最後抽中牌面</div>
-                        <div class="text-lg font-semibold text-neutral-800" id="t3-card-text">-</div>
-                    </div>
-                </div>
-
-                <!-- 數據看板 -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] space-y-3 text-xs">
-                    <div class="flex justify-between"><span>累積試驗總次數:</span> <span id="t3-lbl-n" class="font-bold">0</span></div>
-                    <div class="border-t border-[#f5f5f7] pt-2">
-                        <div class="font-medium text-[#ff9500]">甲（挑戰者 - 扣除1元成本後淨獲利）</div>
-                        <div class="flex justify-between text-sm mt-0.5"><span>累積淨獲利總平均:</span> <span id="t3-lbl-avg-a" class="font-bold text-neutral-800">0.00 元</span></div>
-                    </div>
-                    <div class="border-t border-[#f5f5f7] pt-2">
-                        <div class="font-medium text-[#34c759]">乙（免付費志工 - 純拿獎金淨獲利）</div>
-                        <div class="flex justify-between text-sm mt-0.5"><span>累積淨獲利總平均:</span> <span id="t3-lbl-avg-b" class="font-bold text-neutral-800">0.00 元</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 右側收斂圖表與理論答案對照 -->
-            <div class="flex flex-col gap-6 lg:col-span-2">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] h-72">
-                    <canvas id="t3Chart"></canvas>
-                </div>
-
-                <!-- 答案解析對照面板 -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e8ed] grid grid-cols-1 md:grid-cols-2 gap-6 text-xs leading-relaxed">
-                    <div class="p-4 bg-[#fffbe6] rounded-xl border border-[#ffe58f]">
-                        <h4 class="font-semibold text-[#b78103] mb-1">【解析對照：挑戰者甲】</h4>
-                        <p>1. <strong>「獎金」期望值：</strong> $0 \times \frac{1}{3} + 1 \times \frac{1}{3} + 2 \times \frac{1}{3} = 1$ 元。</p>
-                        <p>2. <strong>「淨獲利」期望值：</strong> 獎金期望值 $1$ 元 $-$ 成本 $1$ 元 = <span class="font-bold text-[#ff3b30]">0 元</span>。</p>
-                        <p>3. <strong>公平性：</strong> 淨獲利期望值為 0，故對甲而言是<span class="bg-[#ffe58f] px-1 font-medium">公平的賽局</span>。長期下來，甲的累積淨獲利平均值會死死逼近 <span class="font-bold text-[#ff3b30]">0</span>（橘色線）。</p>
-                    </div>
-                    <div class="p-4 bg-[#eafaf0] rounded-xl border border-[#b7eb8f]">
-                        <h4 class="font-semibold text-[#27893c] mb-1">【解析對照：免付費志工乙】</h4>
-                        <p>1. <strong>「獎金」期望值：</strong> 與甲相同，均為 <span class="font-bold">1 元</span>。</p>
-                        <p>2. <strong>「淨獲利」期望值：</strong> 因不需成本，獲利即獎金 = <span class="font-bold text-[#34c759]">1 元</span>。</p>
-                        <p>3. <strong>公平性：</strong> 期望值大於 0，對乙而言是<span class="bg-[#b7eb8f] px-1 font-medium">不公平的（佔便宜賽局）</span>。長期下來，乙的累積淨獲利平均值會收斂至 <span class="font-bold text-[#34c759]">1</span>（綠色線）。</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
 
     <!-- 通用頁尾 -->
-    <footer class="bg-white border-t border-[#e8e8ed] py-4 text-center text-xs text-[#86868b]">
-        林老師的極簡數學數位教案封包庫 © 2026
-    </footer>
-
+    <footer class="bg-white border-t border-[#e8e8ed] py-3 text-center text-xs text-[#86868b] shrink-0 z-50">林老師的極簡數學數位教案封包庫 © 2026</footer>
 
     <!-- ========================================== -->
     <!-- 核心控制 JavaScript -->
@@ -299,24 +226,33 @@
             t3Select.appendChild(opt);
         }
 
-        // 通用虛擬路由切換
-        function switchView(viewId) {
-            document.querySelectorAll('.view-section').forEach(section => section.classList.remove('active'));
-            document.getElementById(`view-${viewId}`).classList.add('active');
-            const backBtn = document.getElementById('btn-back-home');
-            if (viewId === 'home') {
-                backBtn.classList.add('hidden');
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar-container');
+            const overlay = document.getElementById('sidebar-overlay');
+            if(sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden');
             } else {
-                backBtn.classList.remove('hidden');
-                if(viewId === 'topic1') t1Chart.resize();
-                if(viewId === 'topic2') t2Chart.resize();
-                if(viewId === 'topic3') t3Chart.resize();
+                sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden');
             }
         }
 
-        // ==========================================
-        // 主題一：不公正賽局 邏輯
-        // ==========================================
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(section => section.classList.remove('active'));
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+            const activeSidebarItem = document.getElementById(`side-${viewId}`);
+            if(activeSidebarItem) activeSidebarItem.classList.add('active');
+            const sidebar = document.getElementById('sidebar-container');
+            if(!sidebar.classList.contains('-translate-x-full')) toggleMobileSidebar();
+
+            if(viewId === 'topic1') t1Chart.resize();
+            if(viewId === 'topic2') t2Chart.resize();
+            if(viewId === 'topic3') t3Chart.resize();
+        }
+
+        window.onload = function() { switchView('topic1'); };
+
+        // 主題一邏輯
         let t1Count = 0, t1Sum = 0;
         const ctx1 = document.getElementById('t1Chart').getContext('2d');
         const t1Chart = new Chart(ctx1, {
@@ -326,7 +262,7 @@
                 datasets: [{ label: '實際平均收益', data: [0], borderColor: '#0071e3', borderWidth: 2, pointRadius: 0, tension: 0.1 },
                            { label: '理論期望值 (10)', data: [10], borderColor: '#aeaea2', borderDash: [5, 5], pointRadius: 0 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: -60, max: 110 } } }
+            options: { responsive: true, maintainAspectRatio: false }
         });
         function runT1(times) {
             for(let i=0; i<times; i++) {
@@ -344,9 +280,7 @@
             t1Chart.data.labels = [0]; t1Chart.data.datasets[0].data = [0]; t1Chart.update();
         }
 
-        // ==========================================
-        // 主題二：公正雙骰點數和 邏輯
-        // ==========================================
+        // 主題二邏輯
         let t2N = 0, t2Sum = 0; let t2Freq = {2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0};
         const rotateCoords = { 1:'rotateX(0deg) rotateY(0deg)', 6:'rotateY(180deg)', 2:'rotateY(-90deg)', 5:'rotateY(90deg)', 3:'rotateX(-90deg)', 4:'rotateX(90deg)' };
         const ctx2 = document.getElementById('t2Chart').getContext('2d');
@@ -357,7 +291,7 @@
                 datasets: [{ label: '累積歷史總平均', data: [null], borderColor: '#0071e3', borderWidth: 2, pointRadius: 0, tension: 0.1 },
                            { label: '理論期望值 (7.0)', data: [7], borderColor: '#aeaea2', borderDash: [5, 5], pointRadius: 0 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 1, max: 13 } } }
+            options: { responsive: true, maintainAspectRatio: false }
         });
         function startT2() {
             const btn = document.getElementById('btn-t2-start'); const selectTimes = parseInt(document.getElementById('t2-exp-times').value);
@@ -386,96 +320,44 @@
             t2Chart.data.labels = [0]; t2Chart.data.datasets[0].data = [null]; t2Chart.update();
         }
 
-        // ==========================================
-        // 主題三：園遊會公平賽局 邏輯
-        // ==========================================
-        let t3N = 0;
-        let t3SumA = 0; // 甲的累積淨利
-        let t3SumB = 0; // 乙的累積淨利
-        
+        // 主題三邏輯
+        let t3N = 0, t3SumA = 0, t3SumB = 0;
         const ctx3 = document.getElementById('t3Chart').getContext('2d');
         const t3Chart = new Chart(ctx3, {
             type: 'line',
             data: {
                 labels: [0],
                 datasets: [
-                    { label: '甲(挑戰者)累積實際淨利均值', data: [null], borderColor: '#ff9500', borderWidth: 2, pointRadius: 0, tension: 0.1 },
-                    { label: '乙(志工)累積實際淨利均值', data: [null], borderColor: '#34c759', borderWidth: 2, pointRadius: 0, tension: 0.1 },
-                    { label: '甲理論淨利期望值 (0.0)', data: [0], borderColor: '#ff3b30', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
-                    { label: '乙理論淨利期望值 (1.0)', data: [1], borderColor: '#0071e3', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 }
+                    { label: '甲實際淨利均值', data: [null], borderColor: '#ff9500', borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                    { label: '乙實際淨利均值', data: [null], borderColor: '#34c759', borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                    { label: '甲理論 (0.0)', data: [0], borderColor: '#ff3b30', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
+                    { label: '乙理論 (1.0)', data: [1], borderColor: '#0071e3', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: { y: { min: -1.5, max: 2.5, title: { display: true, text: '累積平均淨獲利(元)' } } }
-            }
+            options: { responsive: true, maintainAspectRatio: false }
         });
-
         function startT3() {
-            const btn = document.getElementById('btn-t3-start');
-            const times = parseInt(document.getElementById('t3-exp-times').value);
-            btn.disabled = true;
-
-            // 翻牌前先收回所有牌 (重設CSS狀態)
-            document.querySelectorAll('.card-entity').forEach(c => c.classList.remove('is-flipped'));
-
-            let batch = [];
-            const prizes = [0, 1, 2];
-            for (let i = 0; i < times; i++) {
-                let chosenPrize = prizes[Math.floor(Math.random() * 3)];
-                batch.push(chosenPrize);
-            }
-            
-            // 挑最後一次當作畫面上翻牌呈現的那張牌
+            const btn = document.getElementById('btn-t3-start'); const times = parseInt(document.getElementById('t3-exp-times').value);
+            btn.disabled = true; document.querySelectorAll('.card-entity').forEach(c => c.classList.remove('is-flipped'));
+            let batch = []; const prizes = [0, 1, 2];
+            for (let i = 0; i < times; i++) batch.push(prizes[Math.floor(Math.random() * 3)]);
             let finalPrize = batch[batch.length - 1];
-
             setTimeout(() => {
-                // 將對應中獎的那張立體卡片翻轉
-                const targetCard = document.getElementById(`card-${finalPrize}`);
-                targetCard.classList.add('is-flipped');
+                document.getElementById(`card-${finalPrize}`).classList.add('is-flipped');
                 document.getElementById('t3-card-text').innerText = `抽中 ${finalPrize} 元牌面！`;
-
-                // 批次推進數據庫
                 batch.forEach(prize => {
-                    t3N++;
-                    // 甲：拿到獎金，但要扣 1 元成本
-                    let netA = prize - 1;
-                    // 乙：免成本，直接拿到獎金
-                    let netB = prize;
-
-                    t3SumA += netA;
-                    t3SumB += netB;
-
-                    t3Chart.data.labels.push(t3N);
-                    t3Chart.data.datasets[0].data.push(t3SumA / t3N);
-                    t3Chart.data.datasets[1].data.push(t3SumB / t3N);
-                    t3Chart.data.datasets[2].data.push(0); // 甲理論虛線延伸
-                    t3Chart.data.datasets[3].data.push(1); // 乙理論虛線延伸
+                    t3N++; t3SumA += (prize - 1); t3SumB += prize;
+                    t3Chart.data.labels.push(t3N); t3Chart.data.datasets[0].data.push(t3SumA / t3N); t3Chart.data.datasets[1].data.push(t3SumB / t3N);
+                    t3Chart.data.datasets[2].data.push(0); t3Chart.data.datasets[3].data.push(1);
                 });
-
-                // 更新文字看盤
                 document.getElementById('t3-lbl-n').innerText = t3N;
-                document.getElementById('t3-lbl-avg-a').innerText = (t3SumA / t3N).toFixed(2) + ' 元';
-                document.getElementById('t3-lbl-avg-b').innerText = (t3SumB / t3N).toFixed(2) + ' 元';
-
-                t3Chart.update('none');
-                btn.disabled = false;
+                t3Chart.update('none'); btn.disabled = false;
             }, 400);
         }
-
         function resetT3() {
-            t3N = 0; t3SumA = 0; t3SumB = 0;
-            document.querySelectorAll('.card-entity').forEach(c => c.classList.remove('is-flipped'));
-            document.getElementById('t3-card-text').innerText = '-';
-            document.getElementById('t3-lbl-n').innerText = '0';
-            document.getElementById('t3-lbl-avg-a').innerText = '0.00 元';
-            document.getElementById('t3-lbl-avg-b').innerText = '0.00 元';
-
-            t3Chart.data.labels = [0];
-            t3Chart.data.datasets[0].data = [null];
-            t3Chart.data.datasets[1].data = [null];
-            t3Chart.update();
+            t3N = 0; t3SumA = 0; t3SumB = 0; document.querySelectorAll('.card-entity').forEach(c => c.classList.remove('is-flipped'));
+            document.getElementById('t3-card-text').innerText = '-'; document.getElementById('t3-lbl-n').innerText = '0';
+            t3Chart.data.labels = [0]; t3Chart.data.datasets[0].data = [null]; t3Chart.data.datasets[1].data = [null]; t3Chart.update();
         }
     </script>
 </body>
